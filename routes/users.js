@@ -4,6 +4,8 @@ const passport = require('passport');
 const jwt = require('jsonwebtoken');
 const config = require('../config/database');
 const User = require('../models/user');
+const menuItem = require('../models/menuItem');
+const { isValidObjectId } = require('mongoose');
 
 // Register
 router.post('/register', (req, res, next) => {
@@ -42,7 +44,7 @@ router.post('/authenticate', (req, res, next) => {
         const token = jwt.sign({ data: user }, config.secret, {
           expiresIn: 604800 // 1 week
         });
-
+      
         res.json({
           success: true,
           token: `Bearer ${token}`,
@@ -59,12 +61,63 @@ router.post('/authenticate', (req, res, next) => {
     });
   });
 });
-
 // Profile
-router.get('/dashboard', passport.authenticate('jwt', { session: false }), (req, res, next) => {
-  res.json({
-    user: req.user
+router.get('/dashboard', passport.authenticate('jwt', { session: false }), (req, res) => {
+    menuItem.find((err,docs) =>{
+    if(!err){res.send(docs);}
+    else{console.log("error in retrieving");}
   });
+});
+  //add menu-items
+router.post('/additem', (req, res) => {
+  var item= new menuItem({
+    name: req.body.name,
+    price: req.body.price,
+    priceTag:req.body.priceTag,
+    category: req.body.category
+  });
+  item.save((err,doc)=>{
+    if(!err){res.send(doc);}
+    else{console.log("error in save");}
+  });
+});
+
+router.get('/:id',(req,res)=>{
+  if(!isValidObjectId(req.params.id))
+    return res.status(400).send('No record with given id');
+
+  menuItem.findById(req.params.id,(err,docs)=>{
+    if(!err){
+      res.send(docs);
+    }
+    else{console.log('error in retrieving item')}
+  });
+});
+
+//UPDATE OPERATION
+router.put('/:id',(req, res) => {
+  var Item ={
+      name: req.body.name,
+      price: req.body.price,
+      priceTag:req.body.priceTag,
+      category: req.body.category,
+    }
+  menuItem.findByIdAndUpdate(req.params.id,{$set:Item},{new:true},(err,doc) =>{
+    if(!err) res.send(doc);
+    else{
+      console.log("error in update")
+    }
+    });
+
+  });
+
+router.delete('/:id',(req, res) => {
+  menuItem.findByIdAndRemove(req.params.id,(err,doc) =>{
+    if(!err) res.send(doc);
+    else{
+      console.log("error in remove")
+    }
+    });
 });
 
 module.exports = router;
